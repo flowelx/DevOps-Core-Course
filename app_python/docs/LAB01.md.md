@@ -1,0 +1,202 @@
+# Lab 1 — DevOps Info Service: Web Application Development
+
+## 1. Framework Selection
+
+**Selected Framework: FastAPI**
+
+My framework choice was FastAPI. I have previous experience with the framework in academic projects. It provides an automatic API documentation (via Swagger UI) and has excellent asynchronous performance.
+
+**Comparison table:**
+
+| **Feature**       | **FastAPI**    | **Flask**  | **Django**    |
+| ----------------- | -------------- | ---------- | ------------- |
+| **Performance**   | Async          | Sync       | Sync          |
+| **Documentation** | Auto-generated | Manual     | Manual        |
+| **Complexity**    | Moderate       | Easy       | Difficult     |
+| **Best For**      | APIs           | Small apps | Full web apps |
+
+## 2. Best Practices Applied
+
+#### 1. Clean code organization
+
+**Clear function names** allow developers to quickly understand a function's purpose.
+
+```python
+def get_uptime():
+async def ger_service_info(request: Request):
+async def health_check():
+```
+
+**Proper imports grouping** enhances code's readability. Standard library imports come first, followed by third-party imports.
+
+```python
+import os
+import socket
+import platform
+import logging
+from datetime import datetime, timezone
+
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
+import uvicorn
+```
+
+**Comments only where needed** help developers quickly get familiar with code. An abundance of comments decreases readability. 
+
+```python
+async def health_check():
+    """
+    Health check endpoint for service monitoring.
+    Returns:
+        dict: Service health status with timestamp and uptime.
+    """
+    
+def not_found_exception_handler(request: Request, exc: Exception):
+    """Handle 404 errors: page not found"""
+```
+
+**Follow PEP 8**
+
+- Proper import grouping
+- 4-space indentation
+- Line length < 79 characters 
+- Descriptive variable names
+
+```python
+return {
+        'seconds': seconds,
+        'human': f"{hours} hour{'s' if hours != 1 else ''}, "
+                 f"{minutes} minute{'s' if minutes != 1 else ''}"
+    }
+```
+
+#### 2. Error Handling
+
+Error handling is cruicial in the creation and maintenance of web applications because developers should cover all possible outcomes so that end users won't face unexpected behavior.
+
+```python
+@app.exception_handler(500)
+async def internal_error_handler(request: Request, exc: Exception):
+    """Handle 500 errors: internal server errors"""
+
+    return JSONResponse(
+        status_code=500,
+        content={
+            'error': 'Internal Server Error',
+            'message': 'An unexpected error occurred'
+        }
+    )
+```
+
+#### 3. Logging
+
+Logging is a significant part of the development process that ensures competent debugging.
+
+```python
+logger.info(f'Starting server on {HOST}:{PORT}')
+
+logger.info('Health check requested')
+```
+
+#### 4. Dependencies
+
+The `requirements.txt` file lists the required versions of packages ensuring consistent environments in develompent, testing, and production.
+
+```
+fastapi==0.115.0
+uvicorn[standard]==0.32.0
+```
+
+#### 5. Git Ignore
+
+The `.gitignore` file is used to avoid leaking of files with sensitive information and files with large amounts of unnecessary data and cache from Git tracking. 
+
+```
+# Python
+__pycache__/
+*.py[cod]
+venv/
+*.log
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+```
+
+## 3. API Documentation
+
+#### GET / - Service Information
+
+**Request:**
+
+```bash
+curl http://localhost:5000/
+```
+
+**Response:**
+
+```
+{"service":{"name":"devops-info-request","version":"1.0.0","description":"DevOps course info service","framework":"FastAPI"},"system":{"hostname":"Alena","platform":"Linux","platform_version":"#1 SMP Tue Nov 5 00:21:55 UTC 2024","architecture":"x86_64","cpu_count":8,"python_version":"3.12.3"},"runtime":{"uptime_seconds":174,"uptime_human":"0 hours, 2 minutes","current_time":"2026-01-25T16:32:23.571647+00:00Z","timezone":"UTC"},"request":{"client_ip":"127.0.0.1","user_agent":"curl/8.5.0","method":"GET","path":"/"},"endpoints":[{"path":"/","method":"GET","description":"Service information"},{"path":"/health","method":"GET","description":"Health check"}]}
+```
+
+#### GET /health - Health Check
+
+**Request:**
+
+```bash
+curl http://localhost:5000/health
+```
+
+**Response:**
+
+```
+{"status":"healthy","timestamp":"2026-01-25T16:33:03.396081+00:00Z","uptime_seconds":213}
+```
+
+## 4. Testing Evidence
+
+#### Screenshots
+
+**1. Main Endpoint (`GET /)**
+
+![[Pasted image 20260125193526.png]]
+
+**2. Health Check (`GET /health)**
+
+![[Pasted image 20260125193530.png]]
+
+#### Terminal Output
+
+```
+INFO:     Started server process [15856]
+INFO:     Waiting for application startup.
+INFO:     127.0.0.1:17476 - "GET / HTTP/1.1" 200 OK
+2026-01-25 19:36:44,178 - app - INFO - Health check requested
+INFO:     127.0.0.1:17476 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58674 - "GET /docs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58674 - "GET /openapi.json HTTP/1.1" 200 OK
+2026-01-25 19:36:55,753 - app - INFO - GET / from 127.0.0.1
+INFO:     127.0.0.1:41086 - "GET / HTTP/1.1" 200 OK
+```
+
+## 5. Challenges & Solutions
+
+**Challenge 1: First Independent API Development**
+
+Previously I only assisted with creating endpoints. I had never built a complete web service from scratch, so my practical experience with FastAPI was limited. 
+
+**Solution:** Studied FastAPI documentation.
+
+**Challenge 2: Understanding Application Architecture**
+
+I was unfamiliar with the relationship between FastAPI and ASGI servers.
+
+**Solution:** Learned that uvicorn is the ASGI server. FastAPI defines the application logic. Uvicorn serves it to handle HTTP requests. 
+
+---
+## GitHub Community
+
+Starring repositories signals interest and support, helping projects gain visibility and recognition within the developer community. Following developers provides learning opportunities through their code contributions and fosters networking for potential collaboration. 
