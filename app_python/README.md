@@ -8,8 +8,6 @@ This FastAPI application delivers runtime and system data through HTTP endpoints
 
 - Python 3.11+
 - pip (Python package manager)
-- Git (for cloning the repository)
-- Optional: curl or HTTP client for testing endpoints
 
 ## Installation
 
@@ -36,7 +34,7 @@ pip install -r requirements.txt
 
 ### Default Configuration
 
-The application runs on `0.0.0.0:8080` with debug mode disabled by default:
+The application runs on `0.0.0.0:5000` with debug mode disabled by default:
 
 ```bash
 python app.py
@@ -80,7 +78,7 @@ Returns comprehensive JSON metadata with the following top-level sections:
 Returns a compact health status document:
 
 - **status** – string status ("healthy")
-- **timestamp** – current UTC timestamp in ISO 8601 format
+- **timestamp** – current UTC timestamp
 - **uptime_seconds** – number of seconds the process has been running
 
 ## Configuration
@@ -90,5 +88,7 @@ The application is configured via environment variables. All variables are optio
 | Variable | Default   | Description                                  |
 |----------|-----------|----------------------------------------------|
 | `HOST`   | `0.0.0.0` | IP address the server binds to               |
-| `PORT`   | `8080`    | TCP port the application listens on          |
+| `PORT`   | `5000`    | TCP port the application listens on          |
 | `DEBUG`  | `False`   | When `true`, enables debug mode with auto-reload and detailed error messages |
+
+
