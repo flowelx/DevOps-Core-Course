@@ -139,7 +139,46 @@ curl http://localhost:5000/
 **Response:**
 
 ```
-{"service":{"name":"devops-info-request","version":"1.0.0","description":"DevOps course info service","framework":"FastAPI"},"system":{"hostname":"Alena","platform":"Linux","platform_version":"#1 SMP Tue Nov 5 00:21:55 UTC 2024","architecture":"x86_64","cpu_count":8,"python_version":"3.12.3"},"runtime":{"uptime_seconds":174,"uptime_human":"0 hours, 2 minutes","current_time":"2026-01-25T16:32:23.571647+00:00Z","timezone":"UTC"},"request":{"client_ip":"127.0.0.1","user_agent":"curl/8.5.0","method":"GET","path":"/"},"endpoints":[{"path":"/","method":"GET","description":"Service information"},{"path":"/health","method":"GET","description":"Health check"}]}
+{
+  "service": {
+    "name": "devops-info-request",
+    "version": "1.0.0",
+    "description": "DevOps course info service",
+    "framework": "FastAPI"
+  },
+  "system": {
+    "hostname": "Alena",
+    "platform": "Linux",
+    "platform_version": "#1 SMP Tue Nov 5 00:21:55 UTC 2024",
+    "architecture": "x86_64",
+    "cpu_count": 8,
+    "python_version": "3.12.3"
+  },
+  "runtime": {
+    "uptime_seconds": 7,
+    "uptime_human": "0 hours, 0 minutes",
+    "current_time": "2026-01-28T11:30:27.647Z",
+    "timezone": "UTC"
+  },
+  "request": {
+    "client_ip": "127.0.0.1",
+    "user_agent": "curl/8.5.0",
+    "method": "GET",
+    "path": "/"
+  },
+  "endpoints": [
+    {
+      "path": "/",
+      "method": "GET",
+      "description": "Service information"
+    },
+    {
+      "path": "/health",
+      "method": "GET",
+      "description": "Health check"
+    }
+  ]
+}
 ```
 
 #### GET /health - Health Check
@@ -153,7 +192,11 @@ curl http://localhost:5000/health
 **Response:**
 
 ```
-{"status":"healthy","timestamp":"2026-01-25T16:33:03.396081+00:00Z","uptime_seconds":213}
+{
+  "status": "healthy",
+  "timestamp": "2026-01-28T11:31:27.003Z",
+  "uptime_seconds": 67
+}
 ```
 
 ## 4. Testing Evidence
@@ -162,24 +205,25 @@ curl http://localhost:5000/health
 
 **1. Main Endpoint (`GET /)**
 
-![[Pasted image 20260125193526.png]]
+![[01-main-endpoint.jpg]]
 
 **2. Health Check (`GET /health)**
 
-![[Pasted image 20260125193530.png]]
+![[02-health-check.jpg]]
 
 #### Terminal Output
 
 ```
-INFO:     Started server process [15856]
+2026-01-28 14:30:19,373 - __main__ - INFO - Starting server on 0.0.0.0:5000
+INFO:     Started server process [1126]
 INFO:     Waiting for application startup.
-INFO:     127.0.0.1:17476 - "GET / HTTP/1.1" 200 OK
-2026-01-25 19:36:44,178 - app - INFO - Health check requested
-INFO:     127.0.0.1:17476 - "GET /health HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58674 - "GET /docs HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58674 - "GET /openapi.json HTTP/1.1" 200 OK
-2026-01-25 19:36:55,753 - app - INFO - GET / from 127.0.0.1
-INFO:     127.0.0.1:41086 - "GET / HTTP/1.1" 200 OK
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:5000 (Press CTRL+C to quit)
+2026-01-28 14:30:27,646 - app - INFO - GET / from 127.0.0.1
+INFO:     127.0.0.1:37898 - "GET / HTTP/1.1" 200 OK
+2026-01-28 14:31:27,003 - app - INFO - Health check requested
+INFO:     127.0.0.1:45926 - "GET /health HTTP/1.1" 200 OK
+
 ```
 
 ## 5. Challenges & Solutions

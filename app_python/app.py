@@ -38,6 +38,14 @@ def get_uptime():
     }
 
 
+def format_datetime_iso(dt: datetime):
+    """Format datetime"""
+    formatted = dt.strftime('%Y-%m-%dT%H:%M:%S')
+    milliseconds = dt.microsecond // 1000
+
+    return f"{formatted}.{milliseconds:03d}Z"
+
+
 @app.get('/')
 async def get_service_info(request: Request):
     """
@@ -70,7 +78,7 @@ async def get_service_info(request: Request):
     runtime_info = {
         'uptime_seconds': uptime['seconds'],
         'uptime_human': uptime['human'],
-        'current_time': datetime.now(timezone.utc).isoformat() + 'Z',
+        'current_time': format_datetime_iso(datetime.now(timezone.utc)),
         'timezone': 'UTC'
     }
 
@@ -110,7 +118,7 @@ async def health_check(request: Request):
 
     return {
         'status': 'healthy',
-        'timestamp': datetime.now(timezone.utc).isoformat() + 'Z',
+        'timestamp': format_datetime_iso(datetime.now(timezone.utc)),
         'uptime_seconds': get_uptime()['seconds']
     }
 
