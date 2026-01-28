@@ -8,8 +8,6 @@ This FastAPI application delivers runtime and system data through HTTP endpoints
 
 - Python 3.11+
 - pip (Python package manager)
-- Git (for cloning the repository)
-- Optional: curl or HTTP client for testing endpoints
 
 ## Installation
 
@@ -92,4 +90,5 @@ The application is configured via environment variables. All variables are optio
 | `HOST`   | `0.0.0.0` | IP address the server binds to               |
 | `PORT`   | `5000`    | TCP port the application listens on          |
 | `DEBUG`  | `False`   | When `true`, enables debug mode with auto-reload and detailed error messages |
+
 
