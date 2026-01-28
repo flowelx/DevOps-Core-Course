@@ -91,5 +91,5 @@ The application is configured via environment variables. All variables are optio
 |----------|-----------|----------------------------------------------|
 | `HOST`   | `0.0.0.0` | IP address the server binds to               |
 | `PORT`   | `5000`    | TCP port the application listens on          |
-
 | `DEBUG`  | `False`   | When `true`, enables debug mode with auto-reload and detailed error messages |
+
