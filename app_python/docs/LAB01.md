@@ -203,13 +203,13 @@ curl http://localhost:5000/health | jq
 
 #### Screenshots
 
-**1. Main Endpoint (`GET /)**
+**1. Main Endpoint (`GET` /)**
 
-![Main Endpoint][screenshots/01-main-endpoint.jpg]
+![Main Endpoint](screenshots/01-main-endpoint.jpg)
 
-**2. Health Check (`GET /health)**
+**2. Health Check (`GET` /health)**
 
-![Health Check][screenshots/02-health-check.jpg]
+![Health Check](screenshots/02-health-check.jpg)
 
 #### Terminal Output
 
