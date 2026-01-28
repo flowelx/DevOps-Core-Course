@@ -133,7 +133,7 @@ venv/
 **Request:**
 
 ```bash
-curl http://localhost:5000/
+curl http://localhost:5000/ | jq
 ```
 
 **Response:**
@@ -186,7 +186,7 @@ curl http://localhost:5000/
 **Request:**
 
 ```bash
-curl http://localhost:5000/health
+curl http://localhost:5000/health | jq
 ```
 
 **Response:**
@@ -205,11 +205,11 @@ curl http://localhost:5000/health
 
 **1. Main Endpoint (`GET /)**
 
-![[01-main-endpoint.jpg]]
+![Main Endpoint][screenshots/01-main-endpoint.jpg]
 
 **2. Health Check (`GET /health)**
 
-![[02-health-check.jpg]]
+![Health Check][screenshots/02-health-check.jpg]
 
 #### Terminal Output
 
