@@ -91,4 +91,65 @@ The application is configured via environment variables. All variables are optio
 | `PORT`   | `5000`    | TCP port the application listens on          |
 | `DEBUG`  | `False`   | When `true`, enables debug mode with auto-reload and detailed error messages |
 
+--- 
+---
 
+# Docker Containerization
+
+## Prerequisites
+
+- Docker 25.0.0+
+
+## Building the Image Locally
+
+To build the Docker image:
+
+```bash
+cd app_python
+docker build -t [image-name]:[tag] -f Dockerfile .
+```
+
+**Example:**
+
+```bash
+docker build -t my-fastapi-app:latest -f Dockerfile .
+```
+
+## Running a Container
+
+To run application in a container:
+
+```bash
+docker run -d -p [host-port]:[container-port] --name [container-name] [image-name]:[tag]
+```
+
+**Example:**
+
+```bash
+docker run -d -p 5000:5000 --name myapp my-fastapi-app:latest
+```
+
+## Environment Variables in Docker
+
+When running in Docker, you can override these environment variables:
+
+```bash
+docker run -d -p 5000:5000 \
+  -e HOST=0.0.0.0 \
+  -e PORT=5000 \
+  -e DEBUG=False \
+  --name myapp \
+  my-fastapi-app:1.0.0
+```
+
+## Pulling from Docker Hub
+
+To use the pre-built image from Docker Hub registry:
+
+```bash
+# Pull latest version
+docker pull flowelx/fastapi-lab-app:latest
+
+# Run pulled image
+docker run -d -p 5000:5000 flowelx/fastapi-lab-app:latest
+```
