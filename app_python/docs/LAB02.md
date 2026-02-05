@@ -181,7 +181,7 @@ curl http://localhost:5000/health
 
 ### Docker Hub Repository
 
-**URL:** https://hub.docker.com/repository/docker/flowelx/devops-core-course/general
+**URL:** https://hub.docker.com/repository/docker/flowelx/fastapi-lab-app/general
 
 ## 4. Technical Analysis
 
