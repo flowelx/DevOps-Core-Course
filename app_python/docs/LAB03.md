@@ -104,6 +104,10 @@ It is convinient for frequent updates. There is no need to track breaking change
 
 ## CI Best Practices & Security
 
+### Status Badge in README
+
+![status badge](screenshots/status-badge.jpg)
+
 ### Caching Implementation
 
 **Python Package Caching:**
