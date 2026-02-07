@@ -36,6 +36,12 @@ jobs:
         cd app_python
         pytest tests/test_app.py
 
+    - name: Security scan with pip-audit
+      run: |
+        cd app_python
+        pip install pip-audit
+        pip-audit -r requirements.txt || echo "Security scan completed"
+
   build:
     runs-on: ubuntu-latest
     needs: test

@@ -1,5 +1,7 @@
 # DevOps Info Service (Python / FastAPI)
 
+[![Python CI/CD](https://github.com/flowelx/DevOps-Core-Course/actions/workflows/python-ci.yml/badge.svg)](https://github.com/flowelx/DevOps-Core-Course/actions/workflows/python-ci.yml)
+
 ## Overview
 
 This FastAPI application delivers runtime and system data through HTTP endpoints. Built as a modular platform for DevOps education, it enables practical exploration of containerization, CI/CD pipelines, monitoring solutions, and infrastructure automation concepts.
