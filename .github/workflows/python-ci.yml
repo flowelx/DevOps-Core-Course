@@ -3,8 +3,14 @@ name: Python CI/CD
 on:
   push:
     branches: [ main, lab03 ]
+    paths:
+      - 'app_python/**'
+      - '.github/workflows/python-ci.yml'
   pull_request:
     branches: [ main ]
+    paths:
+      - 'app_python/**'
+      - '.github/workflows/python-ci.yml'
 
 jobs:
   test:
@@ -26,7 +32,7 @@ jobs:
         cd app_python
         pip install -r requirements.txt
     
-    - name: Run a linter
+    - name: Run linter
       run: |
         cd app_python
         flake8 app.py
@@ -63,5 +69,5 @@ jobs:
         context: ./app_python
         push: true
         tags: |
-          ${{ secrets.DOCKER_USERNAME }}/fastapi-app:latest
-          ${{ secrets.DOCKER_USERNAME }}/fastapi-app:$(date +%Y.%m.%d)
+          ${{ secrets.DOCKER_USERNAME }}/fastapi-lab-app:latest
+          ${{ secrets.DOCKER_USERNAME }}/fastapi-lab-app:$(date +%Y.%m.%d)
