@@ -50,14 +50,14 @@ def format_datetime_iso(dt: datetime):
 async def get_service_info(request: Request):
     """
     Root endpoint returning comprehensive service and system information.
-    
+
     Returns:
-        dict: JSON containing service, system, runtime, and request information.
+        dict: JSON with service, system, runtime, and request information.
     """
     logger.info(
         f"GET / from {request.client.host if request.client else 'unknown'}"
     )
-    
+
     service_info = {
         'name': 'devops-info-request',
         'version': '1.0.0',
@@ -110,7 +110,7 @@ async def get_service_info(request: Request):
 async def health_check(request: Request):
     """
     Health check endpoint for service monitoring.
-    
+
     Returns:
         dict: Service health status with timestamp and uptime.
     """
