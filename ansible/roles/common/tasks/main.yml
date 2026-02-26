@@ -1,0 +1,23 @@
+- name: Update apt cache
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+  become: yes
+
+- name: Install common packages
+  apt:
+    name: "{{ common_packages }}"
+    state: present
+  become: yes
+
+- name: Set timezone
+  timezone:
+    name: "{{ timezone }}"
+  become: yes
+  when: timezone is defined
+
+- name: Upgrade pip
+  pip:
+    name: pip
+    state: latest
+  become: yes

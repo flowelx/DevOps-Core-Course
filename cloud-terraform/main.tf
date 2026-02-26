@@ -9,6 +9,7 @@ terraform {
 
 provider "yandex" {
   zone = var.zone
+  folder_id = var.folder_id
 }
 
 data "http" "myip" {

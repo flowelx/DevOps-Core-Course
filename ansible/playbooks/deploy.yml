@@ -1,0 +1,45 @@
+- name: Deploy Python containerized application
+  hosts: webservers
+  become: yes
+  gather_facts: yes
+
+  vars_files:
+    - ../group_vars/all.yml
+
+  roles:
+    - name: app_deploy
+      vars:
+        app_environment:
+          ENVIRONMENT: production
+          LOG_LEVEL: info
+          APP_VERSION: "{{ docker_image_tag }}"
+
+  pre_tasks:
+    - name: Verify vault variables are loaded
+      debug:
+        msg: "Vault variables loaded successfully: {{ dockerhub_username is defined}}"
+      when: dockerhub_username is defined
+
+  post_tasks:
+    - name: Get running containers
+      command: docker ps
+      register: docker_ps
+      changed_when: false
+    
+    - name: Show running containers
+      debug:
+        var: docker_ps.stdout_lines
+
+    - name: Test application main endpoint
+      uri:
+        url: "http://{{ ansible_default_ipv4.address | default('localhost') }}:{{ app_host_port }}/"
+        method: GET
+        status_code: 200
+      register: main_endpoint
+      ignore_errors: yes
+
+    - name: Show application endpoints status
+      debug:
+        msg:
+          - "Main endpoint: {{ main_endpoint.status | default('FAILED') }}"
+          - "Health endpoint: {{ health_result.status | default('unknown') }}"
