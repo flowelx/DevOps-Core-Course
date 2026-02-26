@@ -1,0 +1,7 @@
+Pulumi.*.yaml
+!Pulumi.dev.yaml  # если хотите хранить dev конфиг
+!Pulumi.yaml
+credentials.json
+venv/
+__pycache__/
+*.pyc
