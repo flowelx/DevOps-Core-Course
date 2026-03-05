@@ -1,0 +1,10 @@
+common_packages:
+  - python3-pip
+  - python3-venv
+  - curl 
+  - wget
+  - git
+  - vim
+  - htop
+
+timezone: "UTC"

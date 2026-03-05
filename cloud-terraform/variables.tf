@@ -1,6 +1,10 @@
 variable "zone" {
   type = string
-  default = "ru-sentral-b"
+  default = "ru-central1-b"
+}
+
+variable "folder_id" {
+  type = string
 }
 
 variable "vm_name" {

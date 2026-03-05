@@ -1,0 +1,71 @@
+- name: Login to Docker Hub
+  docker_login:
+    username: "{{ dockerhub_username }}"
+    password: "{{ dockerhub_password }}"
+  become: yes
+  no_log: true
+
+- name: Pull Docker image
+  docker_image:
+    name: "{{ docker_image }}"
+    tag: "{{ docker_image_tag }}"
+    source: pull
+    force_source: yes
+  become: yes
+  register: pull_result
+
+- name: Get container info
+  docker_container_info:
+    name: "{{ app_container_name }}"
+  register: container_info
+
+- name: Stop existing container
+  docker_container:
+    name: "{{ app_container_name }}"
+    state: absent
+  become: yes
+  when: container_info.exists
+
+- name: Run application container
+  docker_container:
+    name: "{{ app_container_name }}"
+    image: "{{ docker_image }}:{{ docker_image_tag }}"
+    state: started
+    restart_policy: "{{ restart_policy }}"
+    ports:
+      - "{{ app_host_port }}:{{ app_port }}"
+    env: "{{ app_environment }}"
+  become: yes
+  register: run_result
+  notify: restart app container
+
+- name: Wait for application to start 
+  wait_for:
+    port: "{{ app_host_port }}"
+    host: "localhost"
+    delay: 5
+    timeout: 60
+    state: started
+  become: no
+
+- name: Check health endpoint
+  uri: 
+    url: "http://localhost:{{ app_host_port }}{{ health_endpoint }}"
+    method: GET
+    status_code: 200
+    timeout: 10
+  register: health_result
+  retries: 5
+  delay: 3
+  until: health_result.status == 200
+  become: no
+
+- name: Display application info
+  debug:
+    msg: 
+      - "Application deployed successfully!"
+      - "Container: {{ app_container_name }}"
+      - "Image: {{ docker_image }}:{{ docker_image_tag }}"
+      - "Port: {{ app_host_port }} -> {{ app_port }}"
+      - "Health check: {{ health_result.status }}"
+      - "Container status: {{ run_result.container.State.Status | default('running') }}"

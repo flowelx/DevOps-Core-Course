@@ -1,0 +1,12 @@
+- name: restart app container
+  docker_container:
+    name: "{{ app_container_name }}"
+    state: started
+    restart: yes
+  become: yes
+
+- name: reload app container
+  docker_container:
+    name: "{{ app_container_name }}"
+    restart: yes
+  become: yes
