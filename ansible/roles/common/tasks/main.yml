@@ -1,23 +1,67 @@
-- name: Update apt cache
-  apt:
-    update_cache: yes
-    cache_valid_time: 3600
-  become: yes
+- name: Common role tasks
+  block:
+    - name: Package installation block
+      block:
+        - name: Update apt cache
+          apt:
+            update_cache: yes
+            cache_valid_time: 3600
+          
+        - name: Install common packages
+          apt:
+            name: "{{ common_packages }}"
+            state: present
+          
+        - name: Upgrade pip
+          pip:
+            name: pip
+            state: latest
+          
+      rescue:
+        - name: Handle apt cache update failure
+          debug:
+            msg: "Apt cache update failed, running fix..."
+          
+        - name: Fix missing packages
+          apt:
+            name: apt
+            state: latest
+            update_cache: yes
+          when: ansible_os_family == "Debian"
+          
+      tags:
+        - packages
 
-- name: Install common packages
-  apt:
-    name: "{{ common_packages }}"
-    state: present
-  become: yes
+    - name: User creation block
+      block:
+        - name: Set timezone
+          timezone:
+            name: "{{ timezone }}"
+          when: timezone is defined
+          
+      tags:
+        - users
 
-- name: Set timezone
-  timezone:
-    name: "{{ timezone }}"
-  become: yes
-  when: timezone is defined
+  rescue:
+    - name: Common role failure handler
+      debug:
+        msg: "Common role execution failed"
+        
+    - name: Log failure
+      copy:
+        content: "Common role failed at {{ ansible_date_time.iso8601 }}"
+        dest: /tmp/common_role_failed.log
+        mode: '0644'
 
-- name: Upgrade pip
-  pip:
-    name: pip
-    state: latest
-  become: yes
+  always:
+    - name: Log completion
+      copy:
+        content: "Common role completed at {{ ansible_date_time.iso8601 }}"
+        dest: /tmp/common_role_completed.log
+        mode: '0644'
+    - debug:
+        msg: "Common role execution finished"
+
+  become: true
+  tags:
+    - common

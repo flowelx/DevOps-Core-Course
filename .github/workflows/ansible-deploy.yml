@@ -1,0 +1,186 @@
+name: Ansible Deployment
+
+on:
+  push:
+    branches: [ main, master, develop ]
+    paths:
+      - 'ansible/**'
+      - '.github/workflows/ansible-deploy.yml'
+      - '!ansible/docs/**'
+      - '!**/*.md'
+  pull_request:
+    branches: [ main, master ]
+    paths:
+      - 'ansible/**'
+      - '!ansible/docs/**'
+      - '!**/*.md'
+  workflow_dispatch:
+    inputs:
+      wipe:
+        description: 'Run wipe before deployment'
+        required: false
+        default: 'false'
+        type: boolean
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+
+env:
+  ANSIBLE_VERSION: '9.0.0'
+  PYTHON_VERSION: '3.12'
+
+jobs:
+  lint:
+    name: Lint Ansible Code
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install ansible==${{ env.ANSIBLE_VERSION }} ansible-lint yamllint
+
+      - name: Run yamllint
+        run: |
+          yamllint ansible/playbooks/*.yml ansible/roles/*/tasks/*.yml ansible/group_vars/*.yml
+        continue-on-error: true
+
+      - name: Run ansible-lint
+        run: |
+          cd ansible
+          ansible-lint playbooks/*.yml --force-color
+        continue-on-error: false
+
+      - name: Check Ansible syntax
+        run: |
+          cd ansible
+          ansible-playbook playbooks/deploy.yml --syntax-check
+
+  deploy:
+    name: Deploy Application
+    needs: lint
+    runs-on: ${{ github.event.inputs.environment == 'production' && 'self-hosted' || 'ubuntu-latest' }}
+    environment: ${{ github.event.inputs.environment || 'staging' }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Ansible and dependencies
+        run: |
+          pip install ansible==${{ env.ANSIBLE_VERSION }}
+          pip install docker-compose  # For Docker Compose module
+
+      - name: Setup SSH for remote deployment
+        if: runner.environment != 'self-hosted'
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.VM_HOST }} >> ~/.ssh/known_hosts
+          echo "ANSIBLE_SSH_ARGS='-o StrictHostKeyChecking=no'" >> $GITHUB_ENV
+
+      - name: Create inventory file
+        run: |
+          mkdir -p ansible/inventory
+          cat > ansible/inventory/hosts.ini << EOF
+          [webservers]
+          ${{ secrets.VM_HOST }} ansible_user=${{ secrets.VM_USER }} ansible_ssh_private_key_file=~/.ssh/id_rsa
+          
+          [all:vars]
+          ansible_python_interpreter=/usr/bin/python3
+          EOF
+
+      - name: Decrypt Vault password
+        run: |
+          echo "${{ secrets.ANSIBLE_VAULT_PASSWORD }}" > /tmp/vault_pass
+          chmod 600 /tmp/vault_pass
+
+      - name: Run Ansible playbook (Normal deploy)
+        if: github.event.inputs.wipe != 'true'
+        run: |
+          cd ansible
+          ansible-playbook playbooks/deploy.yml \
+            -i inventory/hosts.ini \
+            --vault-password-file /tmp/vault_pass \
+            --tags "app_deploy,compose" \
+            --extra-vars "target_env=${{ github.event.inputs.environment || 'staging' }}"
+        env:
+          ANSIBLE_HOST_KEY_CHECKING: false
+          ANSIBLE_FORCE_COLOR: true
+
+      - name: Run Ansible playbook (Clean reinstall with wipe)
+        if: github.event.inputs.wipe == 'true'
+        run: |
+          cd ansible
+          ansible-playbook playbooks/deploy.yml \
+            -i inventory/hosts.ini \
+            --vault-password-file /tmp/vault_pass \
+            --tags "app_deploy,compose" \
+            --extra-vars "target_env=${{ github.event.inputs.environment || 'staging' }} web_app_wipe=true"
+        env:
+          ANSIBLE_HOST_KEY_CHECKING: false
+          ANSIBLE_FORCE_COLOR: true
+
+      - name: Cleanup vault password
+        if: always()
+        run: rm -f /tmp/vault_pass
+
+  verify:
+    name: Verify Deployment
+    needs: deploy
+    runs-on: ubuntu-latest
+    if: success()
+    
+    steps:
+      - name: Wait for application to be ready
+        run: sleep 15
+
+      - name: Test application endpoint
+        run: |
+          curl -f -s -o /dev/null -w "HTTP Status: %{http_code}\n" \
+            http://${{ secrets.VM_HOST }}:8000/health || \
+          (echo "Health check failed" && exit 1)
+
+      - name: Get application info
+        run: |
+          echo "Application is running!"
+          curl -s http://${{ secrets.VM_HOST }}:8000/ | head -5 || true
+          echo ""
+          echo "Container status:"
+          ssh -o StrictHostKeyChecking=no \
+            -i ~/.ssh/id_rsa \
+            ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }} \
+            "docker ps --filter name=devops-app"
+
+      - name: Create deployment comment
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '**Deployment successful!**\n- Environment: ${{ github.event.inputs.environment || "staging" }}\n- Wipe: ${{ github.event.inputs.wipe || "false" }}\n- App is running at: http://${{ secrets.VM_HOST }}:8000'
+            })

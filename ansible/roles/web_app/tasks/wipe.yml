@@ -1,0 +1,125 @@
+- name: Wipe web application
+  block:
+    - name: Display wipe start message
+      debug:
+        msg: "Starting wipe process for {{ web_app_name | default('devops-app') }}"
+      tags:
+        - web_app_wipe
+        - wipe_info
+
+    - name: Stop and remove containers with Docker Compose
+      community.docker.docker_compose_v2:
+        project_src: "{{ compose_project_dir | default('/opt/' + (web_app_name | default('devops-app'))) }}"
+        files:
+          - docker-compose.yml
+        state: absent
+        remove_volumes: yes
+        remove_orphans: yes
+      become: yes
+      ignore_errors: yes
+      register: compose_down_result
+      tags:
+        - web_app_wipe
+        - wipe_containers
+
+    - name: Remove docker-compose.yml file
+      file:
+        path: "{{ compose_project_dir | default('/opt/' + (web_app_name | default('devops-app'))) }}/docker-compose.yml"
+        state: absent
+      become: yes
+      ignore_errors: yes
+      tags:
+        - web_app_wipe
+        - wipe_files
+
+    - name: Remove application directory
+      file:
+        path: "{{ compose_project_dir | default('/opt/' + (web_app_name | default('devops-app'))) }}"
+        state: absent
+      become: yes
+      ignore_errors: yes
+      register: dir_removed
+      tags:
+        - web_app_wipe
+        - wipe_directories
+
+    - name: Optionally remove Docker images
+      block:
+        - name: Get image ID
+          docker_image_info:
+            name: "{{ docker_image }}:{{ docker_tag | default('latest') }}"
+          register: image_info
+          become: yes
+          ignore_errors: yes
+
+        - name: Remove Docker image
+          docker_image:
+            name: "{{ docker_image }}:{{ docker_tag | default('latest') }}"
+            state: absent
+          become: yes
+          when: image_info.images | length > 0
+          ignore_errors: yes
+      when: web_app_wipe_images | default(false) | bool
+      tags:
+        - web_app_wipe
+        - wipe_images
+
+    - name: Remove any orphaned volumes
+      shell: |
+        docker volume ls -q --filter "label=com.docker.compose.project={{ web_app_name | default('devops-app') }}" | xargs -r docker volume rm
+      become: yes
+      ignore_errors: yes
+      when: web_app_wipe_volumes | default(false) | bool
+      tags:
+        - web_app_wipe
+        - wipe_volumes
+
+    - name: Log wipe completion
+      copy:
+        content: |
+          Application wiped at {{ ansible_date_time.iso8601 }}
+          Directory removed: {{ dir_removed is changed | ternary('Yes', 'No') }}
+          Containers removed: {{ compose_down_result is changed | ternary('Yes', 'No') }}
+        dest: "/tmp/{{ web_app_name | default('devops-app') }}_wipe_{{ ansible_date_time.epoch }}.log"
+        mode: '0644'
+      become: yes
+      tags:
+        - web_app_wipe
+        - wipe_log
+
+    - name: Display wipe completion message
+      debug:
+        msg:
+          - "Application {{ web_app_name | default('devops-app') }} wiped successfully!"
+          - "Directory: {{ compose_project_dir | default('/opt/' + (web_app_name | default('devops-app'))) }} removed"
+          - "Containers stopped and removed"
+          - "Log saved to /tmp/{{ web_app_name | default('devops-app') }}_wipe_*.log"
+      tags:
+        - web_app_wipe
+        - wipe_info
+
+  rescue:
+    - name: Handle wipe failure
+      debug:
+        msg: "Wipe process encountered errors, but continuing with cleanup..."
+      tags:
+        - web_app_wipe
+
+    - name: Force remove directory if still exists
+      shell: "rm -rf {{ compose_project_dir | default('/opt/' + (web_app_name | default('devops-app'))) }}"
+      become: yes
+      ignore_errors: yes
+      when: compose_project_dir is defined
+      tags:
+        - web_app_wipe
+
+  always:
+    - name: Final cleanup message
+      debug:
+        msg: "Wipe process completed for {{ web_app_name | default('devops-app') }}"
+      tags:
+        - web_app_wipe
+
+  when: web_app_wipe | default(false) | bool
+  tags:
+    - web_app_wipe

@@ -7,7 +7,7 @@
     - ../group_vars/all.yml
 
   roles:
-    - name: app_deploy
+    - name: web_app
       vars:
         app_environment:
           ENVIRONMENT: production
