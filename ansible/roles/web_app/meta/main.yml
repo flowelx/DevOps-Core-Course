@@ -1,0 +1,7 @@
+dependencies:
+  - role: docker
+    tags:
+      - docker
+      - docker_install
+    vars:
+      docker_users: "{{ web_app_users | default(['ubuntu']) }}"

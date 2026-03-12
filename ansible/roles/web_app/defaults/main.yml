@@ -5,10 +5,13 @@ app_container_name: "{{ app_name }}"
 docker_image_tag: latest
 restart_policy: unless-stopped
 
-app_environment:
-  ENVIRONMENT: development
-  LOG_LEVEL: debug
+app_environment: production
+app_debug: false
 
 health_check_retries: 30
 health_check_delay: 2
 health_endpoint: /health
+
+web_app_wipe: false
+web_app_wipe_images: false
+web_app_wipe_volumes: false

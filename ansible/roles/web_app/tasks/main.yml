@@ -1,0 +1,162 @@
+- name: Include wipe tasks
+  include_tasks: wipe.yml
+  tags:
+    - web_app_wipe
+
+- name: Deploy application with Docker Compose
+  block:
+    - name: Login to Docker Hub
+      docker_login:
+        username: "{{ dockerhub_username }}"
+        password: "{{ dockerhub_password }}"
+      become: yes
+      no_log: true
+      tags:
+        - docker_login
+        - compose
+
+    - name: Create application directory
+      file:
+        path: "{{ compose_project_dir | default('/opt/' + (web_app_name | default('devops-app'))) }}"
+        state: directory
+        mode: '0755'
+      become: yes
+      tags:
+        - app_deploy
+        - compose
+        - directories
+
+    - name: Template docker-compose.yml
+      template:
+        src: docker-compose.yml.j2
+        dest: "{{ compose_project_dir | default('/opt/' + (web_app_name | default('devops-app'))) }}/docker-compose.yml"
+        mode: '0644'
+      become: yes
+      register: compose_file
+      tags:
+        - app_deploy
+        - compose
+        - templates
+
+    - name: Install Docker Compose Python library
+      pip:
+        name: docker-compose
+        state: present
+      become: yes
+      tags:
+        - app_deploy
+        - compose
+        - dependencies
+
+    - name: Deploy with Docker Compose
+      community.docker.docker_compose_v2:
+        project_src: "{{ compose_project_dir | default('/opt/' + (web_app_name | default('devops-app'))) }}"
+        files:
+          - docker-compose.yml
+        state: present
+        pull: always
+        recreate: always
+      become: yes
+      register: compose_result
+      tags:
+        - app_deploy
+        - compose
+        - deploy
+
+    - name: Wait for application to start
+      wait_for:
+        port: "{{ app_host_port | default('8000') }}"
+        host: "localhost"
+        delay: 5
+        timeout: 60
+        state: started
+      become: no
+      tags:
+        - app_deploy
+        - health_check
+
+    - name: Check health endpoint
+      uri:
+        url: "http://localhost:{{ app_host_port | default('8000') }}{{ health_endpoint | default('/health') }}"
+        method: GET
+        status_code: 200
+        timeout: 10
+      register: health_result
+      retries: 5
+      delay: 3
+      until: health_result.status == 200
+      become: no
+      tags:
+        - app_deploy
+        - health_check
+
+    - name: Display application info
+      debug:
+        msg:
+          - "Application deployed successfully with Docker Compose!"
+          - "Project directory: {{ compose_project_dir | default('/opt/' + (web_app_name | default('devops-app'))) }}"
+          - "Container: {{ web_app_name | default('devops-app') }}"
+          - "Image: {{ docker_image }}:{{ docker_tag | default('latest') }}"
+          - "Port: {{ app_host_port | default('8000') }} -> {{ app_port | default('8000') }}"
+          - "Health check: {{ health_result.status }}"
+          - "Compose status: {{ compose_result is changed | ternary('Changed', 'OK') }}"
+      tags:
+        - app_deploy
+        - debug
+
+  rescue:
+    - name: Handle deployment failure
+      debug:
+        msg: "Docker Compose deployment failed, attempting rollback..."
+      tags:
+        - app_deploy
+        - rescue
+
+    - name: Log failure
+      copy:
+        content: |
+          Deployment failed at {{ ansible_date_time.iso8601 }}
+          Error: {{ ansible_failed_result.msg | default('Unknown error') }}
+        dest: "/tmp/{{ web_app_name | default('devops-app') }}_deploy_failed.log"
+        mode: '0644'
+      become: yes
+      tags:
+        - app_deploy
+        - rescue
+
+    - name: Attempt to rollback to previous version
+      community.docker.docker_compose_v2:
+        project_src: "{{ compose_project_dir | default('/opt/' + (web_app_name | default('devops-app'))) }}"
+        files:
+          - docker-compose.yml
+        state: present
+        pull: never
+      become: yes
+      ignore_errors: yes
+      when: compose_file.changed
+      tags:
+        - app_deploy
+        - rescue
+        - rollback
+
+  always:
+    - name: Cleanup temporary files
+      file:
+        path: "/tmp/{{ web_app_name | default('devops-app') }}_*"
+        state: absent
+      become: yes
+      ignore_errors: yes
+      tags:
+        - app_deploy
+        - cleanup
+
+    - name: Display completion message
+      debug:
+        msg: "Docker Compose deployment process completed"
+      tags:
+        - app_deploy
+        - debug
+
+  tags:
+    - web_app
+    - app_deployment

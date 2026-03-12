@@ -1,37 +1,88 @@
-- name: Add Docker GPG key
-  apt_key:
-    url: https://download.docker.com/linux/ubuntu/gpg
-    state: present
-  become: yes
+- name: Docker role tasks
+  block:
+    - name: Docker installation block
+      block:
+        - name: Add Docker GPG key
+          apt_key:
+            url: https://download.docker.com/linux/ubuntu/gpg
+            state: present
+          
+        - name: Add Docker repository
+          apt_repository:
+            repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+            state: present
+          
+        - name: Install Docker packages
+          apt:
+            name: 
+              - docker-ce
+              - docker-ce-cli
+              - containerd.io
+            state: present
+          notify: restart docker
+          
+      rescue:
+        - name: Wait before retry on GPG key failure
+          wait_for:
+            timeout: 10
+          delegate_to: localhost
+          
+        - name: Retry Docker GPG key addition
+          apt_key:
+            url: https://download.docker.com/linux/ubuntu/gpg
+            state: present
+          
+        - debug:
+            msg: "Docker GPG key retry completed"
+          
+      tags:
+        - docker_install
 
-- name: Add Docker repository
-  apt_repository:
-    repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
-    state: present
-  become: yes
+    - name: Docker configuration block
+      block:
+        - name: Ensure Docker service is running
+          systemd:
+            name: docker
+            state: started
+            enabled: yes
+          
+        - name: Add user to docker group
+          user:
+            name: "{{ item }}"
+            group: docker
+            append: yes
+          loop: "{{ docker_users }}"
+          
+      tags:
+        - docker_config
 
-- name: Install Docker packages
-  apt:
-    name: 
-      - docker-ce
-      - docker-ce-cli
-      - containerd.io
-    state: present
-  become: yes
-  notify: restart docker
+  rescue:
+    - name: Docker role failure handler
+      debug:
+        msg: "Docker role execution failed"
+        
+    - name: Log Docker failure
+      copy:
+        content: "Docker role failed at {{ ansible_date_time.iso8601 }}"
+        dest: /tmp/docker_role_failed.log
+        mode: '0644'
 
-- name: Ensure Docker service is running
-  systemd:
-    name: docker
-    state: started
-    enabled: yes
-  become: yes
+  always:
+    - name: Ensure Docker service is enabled
+      systemd:
+        name: docker
+        enabled: yes
+      ignore_errors: yes
+      
+    - name: Log Docker role completion
+      copy:
+        content: "Docker role completed at {{ ansible_date_time.iso8601 }}"
+        dest: /tmp/docker_role_completed.log
+        mode: '0644'
+        
+    - debug:
+        msg: "Docker role execution finished"
 
-- name: Add user to docker group
-  user:
-    name: "{{ item }}"
-    group: docker
-    append: yes
-  loop: "{{ docker_users }}"
-  become: yes
-
+  become: true
+  tags:
+    - docker

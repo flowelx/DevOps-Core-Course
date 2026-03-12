@@ -1,0 +1,91 @@
+name: Ansible Deployment
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'ansible/**'
+      - '.github/workflows/ansible-deploy.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'ansible/**'
+
+jobs:
+  lint:
+    name: Lint Ansible Code
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install ansible-lint
+        run: pip install ansible-lint
+
+      - name: Run ansible-lint
+        run: |
+          cd ansible
+          ansible-lint playbooks/deploy.yml
+
+  deploy:
+    name: Deploy Application
+    needs: lint
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Ansible
+        run: pip install ansible
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.VM_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Create inventory
+        run: |
+          mkdir -p ansible/inventory
+          echo "[webservers]" > ansible/inventory/hosts.ini
+          echo "${{ secrets.VM_HOST }} ansible_user=${{ secrets.VM_USER }}" >> ansible/inventory/hosts.ini
+
+      - name: Decrypt vault password
+        run: echo "${{ secrets.ANSIBLE_VAULT_PASSWORD }}" > /tmp/vault_pass
+
+      - name: Run Ansible playbook
+        run: |
+          cd ansible
+          ansible-playbook playbooks/deploy.yml \
+            -i inventory/hosts.ini \
+            --vault-password-file /tmp/vault_pass
+
+      - name: Cleanup
+        if: always()
+        run: rm -f /tmp/vault_pass
+
+  verify:
+    name: Verify Deployment
+    needs: deploy
+    runs-on: ubuntu-latest
+    if: success()
+    
+    steps:
+      - name: Check application
+        run: |
+          sleep 10
+          curl -f http://${{ secrets.VM_HOST }}:8000/health || exit 1
+          echo "Application verified successfully"
