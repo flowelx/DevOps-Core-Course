@@ -25,6 +25,10 @@ ENV PATH="/opt/venv/bin:$PATH"
 COPY app.py .
 COPY requirements.txt .
 
+LABEL logging="promtail" \
+      app="devops-python" \
+      version="1.0.0"
+
 RUN chown -R appuser:appuser /app
 
 USER appuser

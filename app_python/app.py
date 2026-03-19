@@ -2,11 +2,42 @@ import os
 import socket
 import platform
 import logging
+import json
 from datetime import datetime, timezone
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 import uvicorn
+
+class JsonFormatter(logging.Formatter):
+    def format(self, record):
+        log_record = {
+            'timestamp': datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+            'level': record.levelname,
+            'message': record.getMessage(),
+            'module': record.module
+        }
+        
+        if hasattr(record, 'method'):
+            log_record['method'] = record.method
+        if hasattr(record, 'path'):
+            log_record['path'] = record.path
+        if hasattr(record, 'status_code'):
+            log_record['status_code'] = record.status_code
+        if hasattr(record, 'client_ip'):
+            log_record['client_ip'] = record.client_ip
+            
+        return json.dumps(log_record)
+
+handler = logging.StreamHandler()
+handler.setFormatter(JsonFormatter())
+
+logging.basicConfig(
+    level=logging.INFO,
+    handlers=[handler]
+)
+
+logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
@@ -14,13 +45,30 @@ HOST = os.getenv('HOST', '0.0.0.0')
 PORT = int(os.getenv('PORT', '5000'))
 DEBUG = os.getenv('DEBUG', 'False').lower() == 'true'
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
-
 APP_START_TIME = datetime.now(timezone.utc)
+
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    """Логирование всех запросов"""
+    client_ip = request.client.host if request.client else "unknown"
+    
+    logger.info("Request started", extra={
+        'method': request.method,
+        'path': request.url.path,
+        'client_ip': client_ip
+    })
+    
+    response = await call_next(request)
+    
+    logger.info("Request completed", extra={
+        'method': request.method,
+        'path': request.url.path,
+        'status_code': response.status_code,
+        'client_ip': client_ip
+    })
+    
+    return response
 
 
 def get_uptime():
@@ -33,125 +81,66 @@ def get_uptime():
 
     return {
         'seconds': seconds,
-        'human': f"{hours} hour{'s' if hours != 1 else ''}, "
-                 f"{minutes} minute{'s' if minutes != 1 else ''}"
+        'human': f"{hours}h {minutes}m"
     }
 
 
-def format_datetime_iso(dt: datetime):
-    """Format datetime"""
-    formatted = dt.strftime('%Y-%m-%dT%H:%M:%S')
-    milliseconds = dt.microsecond // 1000
-
-    return f"{formatted}.{milliseconds:03d}Z"
+@app.on_event("startup")
+async def startup_event():
+    logger.info("Application started", extra={
+        'host': HOST,
+        'port': PORT,
+        'hostname': socket.gethostname()
+    })
 
 
 @app.get('/')
 async def get_service_info(request: Request):
-    """
-    Root endpoint returning comprehensive service and system information.
-
-    Returns:
-        dict: JSON with service, system, runtime, and request information.
-    """
-    logger.info(
-        f"GET / from {request.client.host if request.client else 'unknown'}"
-    )
-
+    client_ip = request.client.host if request.client else '127.0.0.1'
+    
     service_info = {
         'name': 'devops-info-request',
-        'version': '1.0.0',
-        'description': 'DevOps course info service',
-        'framework': 'FastAPI'
-    }
-
-    system_info = {
         'hostname': socket.gethostname(),
         'platform': platform.system(),
-        'platform_version': platform.version(),
-        'architecture': platform.machine(),
-        'cpu_count': os.cpu_count() or 0,
-        'python_version': platform.python_version()
+        'uptime': get_uptime()['human']
     }
 
-    uptime = get_uptime()
-    runtime_info = {
-        'uptime_seconds': uptime['seconds'],
-        'uptime_human': uptime['human'],
-        'current_time': format_datetime_iso(datetime.now(timezone.utc)),
-        'timezone': 'UTC'
-    }
+    logger.info("Home page accessed", extra={
+        'client_ip': client_ip
+    })
 
-    client_ip = request.client.host if request.client else '127.0.0.1'
-    request_info = {
-        'client_ip': client_ip,
-        'user_agent': request.headers.get('user-agent', 'uknown'),
-        'method': request.method,
-        'path': request.url.path
-    }
-
-    endpoints = [
-        {'path': '/', 'method': 'GET', 'description': 'Service information'},
-        {'path': '/health', 'method': 'GET', 'description': 'Health check'}
-    ]
-
-    response = {
-        'service': service_info,
-        'system': system_info,
-        'runtime': runtime_info,
-        'request': request_info,
-        'endpoints': endpoints
-    }
-
-    return response
+    return service_info
 
 
 @app.get('/health')
 async def health_check(request: Request):
-    """
-    Health check endpoint for service monitoring.
-
-    Returns:
-        dict: Service health status with timestamp and uptime.
-    """
-    logger.info('Health check requested')
+    logger.info("Health check", extra={
+        'client_ip': request.client.host if request.client else 'unknown'
+    })
 
     return {
         'status': 'healthy',
-        'timestamp': format_datetime_iso(datetime.now(timezone.utc)),
-        'uptime_seconds': get_uptime()['seconds']
+        'timestamp': datetime.now(timezone.utc).isoformat()
     }
 
 
-@app.exception_handler(404)
-async def not_found_exception_handler(request: Request, exc: Exception):
-    """Handle 404 errors: page not found"""
-
-    return JSONResponse(
-        status_code=404,
-        content={
-            'error': 'Not Found',
-            'message': 'Endpoint does not exist'
-        }
-    )
-
-
-@app.exception_handler(500)
-async def internal_error_handler(request: Request, exc: Exception):
-    """Handle 500 errors: internal server errors"""
-
+@app.get('/error')
+async def test_error(request: Request):
+    client_ip = request.client.host if request.client else 'unknown'
+    
+    logger.error("Test error", extra={
+        'client_ip': client_ip,
+        'error_type': 'test_error'
+    })
+    
     return JSONResponse(
         status_code=500,
-        content={
-            'error': 'Internal Server Error',
-            'message': 'An unexpected error occurred'
-        }
+        content={'error': 'Test error'}
     )
 
 
 if __name__ == '__main__':
     logger.info(f'Starting server on {HOST}:{PORT}')
-
     uvicorn.run(
         'app:app',
         host=HOST,
