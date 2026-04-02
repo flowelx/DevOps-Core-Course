@@ -1,0 +1,12 @@
+apiVersion: v2
+name: myapp
+description: My application production ready Helm chart
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - webapp
+  - microservice
+home: https://github.com/flowelx/DevOps-Core-Course
+sources:
+  - https://github.com/flowelx/DevOps-Core-Course

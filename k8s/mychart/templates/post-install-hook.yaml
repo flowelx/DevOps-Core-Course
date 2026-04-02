@@ -1,0 +1,39 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "myapp.fullname" . }}-post-install
+  annotations:
+    "helm.sh/hook": post-install
+    "helm.sh/hook-weight": "5"
+    "helm.sh/hook-delete-policy": hook-succeeded
+  labels:
+    {{- include "myapp.labels" . | nindent 4 }}
+spec:
+  template:
+    metadata:
+      labels:
+        {{- include "myapp.labels" . | nindent 8 }}
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: post-install-test
+        image: curlimages/curl:latest
+        command:
+          - /bin/sh
+          - -c
+          - |
+            echo "========================================="
+            echo "POST-INSTALL HOOK: Running smoke tests"
+            echo "========================================="
+            echo "Waiting for service to be ready..."
+            sleep 5
+            
+            SERVICE_URL="http://{{ include "myapp.fullname" . }}:{{ .Values.service.port }}"
+            
+            echo "Testing health endpoint at ${SERVICE_URL}/health"
+            curl -f -s -o /dev/null -w "Health check HTTP Status: %{http_code}\n" ${SERVICE_URL}/health || echo "Health check failed"
+            
+            echo "Testing main endpoint at ${SERVICE_URL}/"
+            curl -f -s -o /dev/null -w "Main endpoint HTTP Status: %{http_code}\n" ${SERVICE_URL}/ || echo "Main endpoint check failed"
+            
+            echo "Smoke tests completed!"

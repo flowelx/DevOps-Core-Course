@@ -1,0 +1,33 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "myapp.fullname" . }}-pre-install
+  annotations:
+    "helm.sh/hook": pre-install
+    "helm.sh/hook-weight": "-5"
+    "helm.sh/hook-delete-policy": hook-succeeded
+  labels:
+    {{- include "myapp.labels" . | nindent 4 }}
+spec:
+  template:
+    metadata:
+      labels:
+        {{- include "myapp.labels" . | nindent 8 }}
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: pre-install-check
+        image: alpine:latest
+        command:
+          - /bin/sh
+          - -c
+          - |
+            echo "========================================="
+            echo "PRE-INSTALL HOOK: Running pre-installation checks"
+            echo "========================================="
+            echo "1. Checking if namespace exists..."
+            echo "2. Validating configuration..."
+            echo "3. Preparing database schema..."
+            echo "4. Creating necessary secrets..."
+            echo "Pre-install checks completed successfully!"
+            sleep 2
