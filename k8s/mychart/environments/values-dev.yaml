@@ -37,6 +37,14 @@ readinessProbe:
   successThreshold: 1
   failureThreshold: 3
 
+secrets:
+  enabled: true
+  stringData:
+    DB_USERNAME: "dev_user"
+    DB_PASSWORD: "dev_password_123"
+    API_KEY: "dev_api_key_abc"
+    SECRET_KEY: "dev_secret_key_xyz"
+
 env:
   - name: ENVIRONMENT
     value: "development"

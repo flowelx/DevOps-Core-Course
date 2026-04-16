@@ -34,10 +34,23 @@ spec:
         ports:
         - containerPort: {{ .Values.service.port }}
           name: http
-        {{- if .Values.env }}
+        
+        {{- if or .Values.secrets.enabled .Values.env }}
         env:
+          {{- if .Values.secrets.enabled }}
+          {{- range $key, $value := .Values.secrets.stringData }}
+          - name: {{ $key }}
+            valueFrom:
+              secretKeyRef:
+                name: {{ include "myapp.fullname" $ }}-secret
+                key: {{ $key }}
+          {{- end }}
+          {{- end }}
+          {{- if .Values.env }}
           {{- toYaml .Values.env | nindent 10 }}
+          {{- end }}
         {{- end }}
+        
         {{- if .Values.livenessProbe.enabled }}
         livenessProbe:
           httpGet:
@@ -48,6 +61,7 @@ spec:
           timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
           failureThreshold: {{ .Values.livenessProbe.failureThreshold }}
         {{- end }}
+        
         {{- if .Values.readinessProbe.enabled }}
         readinessProbe:
           httpGet:
@@ -59,5 +73,6 @@ spec:
           successThreshold: {{ .Values.readinessProbe.successThreshold }}
           failureThreshold: {{ .Values.readinessProbe.failureThreshold }}
         {{- end }}
+        
         resources:
           {{- toYaml .Values.resources | nindent 10 }}

@@ -61,3 +61,14 @@ env:
     value: "production"
   - name: LOG_LEVEL
     value: "info"
+
+secrets:
+  enabled: true
+  annotations: {}
+  data: {}
+  
+  stringData:
+    DB_USERNAME: "app_user"
+    DB_PASSWORD: "default_password"
+    API_KEY: "default_api_key_12345"
+    SECRET_KEY: "default_secret_key"
