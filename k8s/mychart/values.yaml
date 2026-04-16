@@ -72,3 +72,24 @@ secrets:
     DB_PASSWORD: "default_password"
     API_KEY: "default_api_key_12345"
     SECRET_KEY: "default_secret_key"
+
+configMap:
+  enabled: true
+  mountPath: /config/config.json
+  subPath: config.json
+
+configEnv:
+  APP_NAME: "DevOps Info Service"
+  ENVIRONMENT: "production"
+  FEATURE_VISITS: "true"
+  FEATURE_METRICS: "true"
+  LOG_FORMAT: "json"
+  METRICS_PORT: "8000"
+
+persistence:
+  enabled: true
+  annotations: {}
+  size: 100Mi
+  accessMode: ReadWriteOnce
+  storageClass: ""
+  mountPath: /data

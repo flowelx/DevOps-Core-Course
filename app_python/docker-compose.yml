@@ -1,0 +1,16 @@
+services:
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - HOST=0.0.0.0
+      - PORT=8000
+      - DEBUG=False
+      - VISITS_FILE=/data/visits.json
+    volumes:
+      - visits-data:/data
+    restart: unless-stopped
+
+volumes:
+  visits-data:
