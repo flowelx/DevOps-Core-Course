@@ -1,0 +1,24 @@
+{
+  "application": {
+    "name": "DevOps Info Service",
+    "version": "1.0.0",
+    "environment": "production",
+    "framework": "FastAPI"
+  },
+  "features": {
+    "visits_counter": true,
+    "metrics_enabled": true,
+    "structured_logging": true,
+    "debug_mode": false
+  },
+  "api": {
+    "rate_limit": 100,
+    "timeout_seconds": 30,
+    "max_request_size_mb": 10
+  },
+  "monitoring": {
+    "prometheus_enabled": true,
+    "health_check_enabled": true,
+    "metrics_path": "/metrics"
+  }
+}

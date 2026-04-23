@@ -10,6 +10,8 @@ This FastAPI application delivers runtime and system data through HTTP endpoints
 
 - Python 3.11+
 - pip (Python package manager)
+- Docker 25.0.0+ (for containerized deployment)
+- Docker Compose (for volume management)
 
 ## Installation
 
@@ -52,6 +54,9 @@ PORT=8080 python app.py
 
 # Run on 127.0.0.1:3000 with debug/reload enabled
 HOST=127.0.0.1 PORT=3000 DEBUG=true python app.py
+
+# Specify custom visits file location
+VISITS_FILE=./custom_visits.json python app.py
 ```
 
 ### Testing the Endpoints
@@ -59,7 +64,13 @@ HOST=127.0.0.1 PORT=3000 DEBUG=true python app.py
 After starting the application, test the endpoints using curl:
 
 ```bash
+# Home endpoint
 curl http://localhost:8080/
+
+# Check current visit count
+curl http://localhost:8000/visits
+
+# Health check
 curl http://localhost:8080/health
 ```
 
@@ -75,6 +86,17 @@ Returns comprehensive JSON metadata with the following top-level sections:
 - **request** – client_ip, user_agent, method, path
 - **endpoints** – list of available paths and their purpose
 
+### GET `/visits`
+
+Returns the current visit count without incrementing:
+
+```json
+{
+  "visits": 42,
+  "last_updated": "2026-04-16T10:30:00Z"
+}
+```
+
 ### GET `/health`
 
 Returns a compact health status document:
@@ -82,6 +104,19 @@ Returns a compact health status document:
 - **status** – string status ("healthy")
 - **timestamp** – current UTC timestamp
 - **uptime_seconds** – number of seconds the process has been running
+
+### GET `/metrics`
+
+Exports Prometheus metrics including:
+
+- HTTP request counts by method and endpoint
+- Request duration histograms
+- Active requests gauge
+- External API call counters
+
+### GET `/error`
+
+Test endpoint that returns a 500 error for testing error handling and monitoring.
 
 ## Configuration
 
@@ -92,6 +127,7 @@ The application is configured via environment variables. All variables are optio
 | `HOST`   | `0.0.0.0` | IP address the server binds to               |
 | `PORT`   | `5000`    | TCP port the application listens on          |
 | `DEBUG`  | `False`   | When `true`, enables debug mode with auto-reload and detailed error messages |
+| `VISIT_FILE` | `/data/visits.json` | Path to the persistent visit counter file |
 
 --- 
 ---
@@ -101,6 +137,7 @@ The application is configured via environment variables. All variables are optio
 ## Prerequisites
 
 - Docker 25.0.0+
+- Docker Compose (for volume management)
 
 ## Building the Image Locally
 
@@ -117,7 +154,26 @@ docker build -t [image-name]:[tag] -f Dockerfile .
 docker build -t my-fastapi-app:latest -f Dockerfile .
 ```
 
-## Running a Container
+Running with Docker Compose
+
+The application uses Docker volumes to persist visit counter data across container restarts:
+
+```bash
+# Start the application with volume mount
+docker compose up -d
+
+# View logs
+docker compose logs -f app
+
+# Stop the application
+docker compose down
+
+# Data persists! Restart and check visits
+docker compose up -d
+curl http://localhost:8000/visits
+```
+
+## Running a Standalone Container
 
 To run application in a container:
 
@@ -140,6 +196,7 @@ docker run -d -p 5000:5000 \
   -e HOST=0.0.0.0 \
   -e PORT=5000 \
   -e DEBUG=False \
+  -e VISITS_FILE=/data/visits.json \
   --name myapp \
   my-fastapi-app:1.0.0
 ```

@@ -1,16 +1,22 @@
 replicaCount: 3
 
 image:
-  repository: nginx
-  tag: "1.24"
-  pullPolicy: Always
+  tag: stable
 
-service:
-  type: LoadBalancer
-  port: 80
-  annotations:
-    service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
-    service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: "true"
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+
+configEnv:
+  APP_NAME: "DevOps Info Service"
+  ENVIRONMENT: "production"
+  FEATURE_VISITS: "true"
+  FEATURE_METRICS: "true"
+  LOG_FORMAT: "json"
+  METRICS_PORT: "8000"
+  DEBUG_MODE: "false"
 
 resources:
   limits:
@@ -20,72 +26,13 @@ resources:
     cpu: 500m
     memory: 512Mi
 
-livenessProbe:
-  enabled: true
-  httpGet:
-    path: /health
-    port: 80
-  initialDelaySeconds: 30
-  periodSeconds: 15
-  timeoutSeconds: 5
-  failureThreshold: 5
-
-readinessProbe:
-  enabled: true
-  httpGet:
-    path: /ready
-    port: 80
-  initialDelaySeconds: 10
-  periodSeconds: 10
-  timeoutSeconds: 5
-  successThreshold: 1
-  failureThreshold: 5
-
-secrets:
-  enabled: true
-  annotations:
-    secret.kubernetes.io/environment: production
-    secret.kubernetes.io/managed-by: helm
-  data:
-    DB_USERNAME: "cHJvZF91c2Vy"
-    DB_PASSWORD: "UHJvZFNlY3JldFBhc3N3b3JkMjAyNCE="
-    API_KEY: "cHJvZF9hcGlfa2V5X3NlY3VyZQ=="
-    SECRET_KEY: "cHJvZF9zZWNyZXRfa2V5X3ZhbHVl"
-
-env:
-  - name: ENVIRONMENT
-    value: "production"
-  - name: LOG_LEVEL
-    value: "info"
-
-autoscaling:
-  enabled: true
-  minReplicas: 3
-  maxReplicas: 10
-  targetCPUUtilizationPercentage: 70
-  targetMemoryUtilizationPercentage: 80
-
-additionalLabels:
-  environment: production
-  purpose: production-workload
-
-serviceAccount:
-  create: true
-  name: "prod-service-account"
-  annotations:
-    eks.amazonaws.com/role-arn: "arn:aws:iam::xxx:role/prod-role"
-
 priorityClassName: high-priority
 
-affinity:
-  podAntiAffinity:
-    preferredDuringSchedulingIgnoredDuringExecution:
-    - weight: 100
-      podAffinityTerm:
-        labelSelector:
-          matchExpressions:
-          - key: app
-            operator: In
-            values:
-            - myapp
-        topologyKey: kubernetes.io/hostname
+persistence:
+  enabled: true
+  size: 1Gi
+  accessMode: ReadWriteOnce
+  storageClass: "managed-premium"
+  annotations:
+    backup.kubernetes.io/enabled: "true"
+  mountPath: /data

@@ -35,7 +35,7 @@ spec:
         - containerPort: {{ .Values.service.port }}
           name: http
         
-        {{- if or .Values.secrets.enabled .Values.env }}
+        {{- if or .Values.secrets.enabled .Values.env .Values.configEnv }}
         env:
           {{- if .Values.secrets.enabled }}
           {{- range $key, $value := .Values.secrets.stringData }}
@@ -49,6 +49,23 @@ spec:
           {{- if .Values.env }}
           {{- toYaml .Values.env | nindent 10 }}
           {{- end }}
+        {{- end }}
+        
+        {{- if .Values.configEnv }}
+        envFrom:
+        - configMapRef:
+            name: {{ include "myapp.fullname" . }}-env
+        {{- end }}
+        
+        volumeMounts:
+        {{- if .Values.configMap.enabled }}
+        - name: config
+          mountPath: {{ .Values.configMap.mountPath }}
+          subPath: {{ .Values.configMap.subPath }}
+        {{- end }}
+        {{- if .Values.persistence.enabled }}
+        - name: data
+          mountPath: {{ .Values.persistence.mountPath }}
         {{- end }}
         
         {{- if .Values.livenessProbe.enabled }}
@@ -76,3 +93,15 @@ spec:
         
         resources:
           {{- toYaml .Values.resources | nindent 10 }}
+      
+      volumes:
+      {{- if .Values.configMap.enabled }}
+      - name: config
+        configMap:
+          name: {{ include "myapp.fullname" . }}-config
+      {{- end }}
+      {{- if .Values.persistence.enabled }}
+      - name: data
+        persistentVolumeClaim:
+          claimName: {{ include "myapp.fullname" . }}-data
+      {{- end }}
