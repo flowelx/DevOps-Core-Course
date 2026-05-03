@@ -1,0 +1,58 @@
+replicaCount: 3
+
+image:
+  repository: nginx
+  tag: stable
+  pullPolicy: IfNotPresent
+
+blueGreen:
+  enabled: true
+  activeService: myapp-active
+  previewService: myapp-preview
+  autoPromotionEnabled: false
+  autoPromotionSeconds: 0
+  scaleDownDelaySeconds: 30
+  previewReplicaCount: 3
+  revisionHistoryLimit: 5
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 80
+
+livenessProbe:
+  enabled: true
+  httpGet:
+    path: /
+    port: 80
+  initialDelaySeconds: 10
+  periodSeconds: 5
+
+readinessProbe:
+  enabled: true
+  httpGet:
+    path: /
+    port: 80
+  initialDelaySeconds: 5
+  periodSeconds: 5
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 250m
+    memory: 256Mi
+
+configMap:
+  enabled: false
+
+persistence:
+  enabled: false
+
+secrets:
+  enabled: false
+
+env:
+  - name: VERSION
+    value: "blue-initial"
