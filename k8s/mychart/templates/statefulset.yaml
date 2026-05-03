@@ -1,0 +1,192 @@
+{{- if .Values.statefulset.enabled }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "myapp.fullname" . }}
+  labels:
+    {{- include "myapp.labels" . | nindent 4 }}
+    {{- if .Values.additionalLabels }}
+    {{- toYaml .Values.additionalLabels | nindent 4 }}
+    {{- end }}
+spec:
+  serviceName: {{ include "myapp.fullname" . }}-headless
+  replicas: {{ .Values.statefulset.replicaCount | default .Values.replicaCount }}
+  revisionHistoryLimit: {{ .Values.statefulset.revisionHistoryLimit | default 10 }}
+  
+  {{- if .Values.statefulset.podManagementPolicy }}
+  podManagementPolicy: {{ .Values.statefulset.podManagementPolicy }}
+  {{- end }}
+  
+  selector:
+    matchLabels:
+      {{- include "myapp.selectorLabels" . | nindent 6 }}
+  
+  template:
+    metadata:
+      labels:
+        {{- include "myapp.selectorLabels" . | nindent 8 }}
+        {{- if .Values.additionalLabels }}
+        {{- toYaml .Values.additionalLabels | nindent 8 }}
+        {{- end }}
+      {{- if .Values.statefulset.podAnnotations }}
+      annotations:
+        {{- toYaml .Values.statefulset.podAnnotations | nindent 8 }}
+      {{- end }}
+    spec:
+      {{- if .Values.priorityClassName }}
+      priorityClassName: {{ .Values.priorityClassName }}
+      {{- end }}
+      {{- if .Values.affinity }}
+      affinity:
+        {{- toYaml .Values.affinity | nindent 8 }}
+      {{- end }}
+      {{- if .Values.statefulset.terminationGracePeriodSeconds }}
+      terminationGracePeriodSeconds: {{ .Values.statefulset.terminationGracePeriodSeconds }}
+      {{- end }}
+      
+      {{- if .Values.initContainers.enabled }}
+      initContainers:
+      {{- if .Values.initContainers.download.enabled }}
+      - name: download-file
+        image: busybox:latest
+        command:
+        - sh
+        - -c
+        - |
+          echo "Downloading config file from {{ .Values.initContainers.download.url }}..."
+          wget -O /share/config.json {{ .Values.initContainers.download.url }}
+          if [ $? -eq 0 ]; then
+            echo "Download complete. File saved to /share/config.json"
+          else
+            echo "Download failed!"
+            exit 1
+          fi
+        volumeMounts:
+        - name: shared-data
+          mountPath: /share
+      {{- end }}
+      {{- if .Values.initContainers.waitForService.enabled }}
+      - name: wait-for-service
+        image: busybox:latest
+        command:
+        - sh
+        - -c
+        - |
+          echo "Waiting for service {{ .Values.initContainers.waitForService.serviceName }}..."
+          until nslookup {{ .Values.initContainers.waitForService.serviceName }}; do
+            echo "Service not ready, waiting 5 seconds..."
+            sleep 5
+          done
+          echo "Service {{ .Values.initContainers.waitForService.serviceName }} is ready!"
+        {{- if .Values.initContainers.waitForService.timeout }}
+        timeoutSeconds: {{ .Values.initContainers.waitForService.timeout }}
+        {{- end }}
+      {{- end }}
+      {{- end }}
+      
+      containers:
+      - name: {{ .Chart.Name }}
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        ports:
+        - containerPort: {{ .Values.service.port }}
+          name: http
+          protocol: TCP
+        
+        {{- if or .Values.secrets.enabled .Values.env .Values.configEnv }}
+        env:
+          {{- if .Values.secrets.enabled }}
+          {{- range $key, $value := .Values.secrets.stringData }}
+          - name: {{ $key }}
+            valueFrom:
+              secretKeyRef:
+                name: {{ include "myapp.fullname" $ }}-secret
+                key: {{ $key }}
+          {{- end }}
+          {{- end }}
+          {{- if .Values.env }}
+          {{- toYaml .Values.env | nindent 10 }}
+          {{- end }}
+        {{- end }}
+        
+        {{- if .Values.configEnv }}
+        envFrom:
+        - configMapRef:
+            name: {{ include "myapp.fullname" . }}-env
+        {{- end }}
+        
+        volumeMounts:
+        {{- if .Values.configMap.enabled }}
+        - name: config
+          mountPath: {{ .Values.configMap.mountPath }}
+          subPath: {{ .Values.configMap.subPath }}
+        {{- end }}
+        {{- if .Values.initContainers.enabled }}
+        - name: shared-data
+          mountPath: {{ .Values.initContainers.sharedDataMountPath | default "/app/config" }}
+        {{- end }}
+        {{- if .Values.statefulset.persistence.enabled }}
+        - name: data
+          mountPath: {{ .Values.statefulset.persistence.mountPath | default "/data" }}
+        {{- end }}
+        
+        {{- if .Values.livenessProbe.enabled }}
+        livenessProbe:
+          httpGet:
+            path: {{ .Values.livenessProbe.httpGet.path }}
+            port: {{ .Values.livenessProbe.httpGet.port }}
+          initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
+          timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
+          failureThreshold: {{ .Values.livenessProbe.failureThreshold }}
+        {{- end }}
+        
+        {{- if .Values.readinessProbe.enabled }}
+        readinessProbe:
+          httpGet:
+            path: {{ .Values.readinessProbe.httpGet.path }}
+            port: {{ .Values.readinessProbe.httpGet.port }}
+          initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
+          timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
+          successThreshold: {{ .Values.readinessProbe.successThreshold }}
+          failureThreshold: {{ .Values.readinessProbe.failureThreshold }}
+        {{- end }}
+        
+        resources:
+          {{- toYaml .Values.resources | nindent 10 }}
+      
+      volumes:
+      {{- if .Values.configMap.enabled }}
+      - name: config
+        configMap:
+          name: {{ include "myapp.fullname" . }}-config
+      {{- end }}
+      {{- if .Values.initContainers.enabled }}
+      - name: shared-data
+        emptyDir: {}
+      {{- end }}
+  
+  {{- if .Values.statefulset.persistence.enabled }}
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+      labels:
+        {{- include "myapp.labels" . | nindent 8 }}
+      {{- if .Values.statefulset.persistence.annotations }}
+      annotations:
+        {{- toYaml .Values.statefulset.persistence.annotations | nindent 8 }}
+      {{- end }}
+    spec:
+      accessModes:
+      {{- range .Values.statefulset.persistence.accessModes }}
+      - {{ . | quote }}
+      {{- end }}
+      {{- if .Values.statefulset.persistence.storageClass }}
+      storageClassName: {{ .Values.statefulset.persistence.storageClass }}
+      {{- end }}
+      resources:
+        requests:
+          storage: {{ .Values.statefulset.persistence.size }}
+  {{- end }}
+{{- end }}
