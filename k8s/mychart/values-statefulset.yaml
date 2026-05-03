@@ -22,6 +22,18 @@ statefulset:
     annotations:
       backup.kubernetes.io/enabled: "true"
 
+initContainers:
+  enabled: true
+  
+  download:
+    enabled: true
+    url: https://raw.githubusercontent.com/nginx/nginx/master/conf/mime.types
+  
+  waitForService:
+    enabled: true
+    serviceName: kubernetes
+    timeout: 30
+
 service:
   type: ClusterIP
   port: 80
