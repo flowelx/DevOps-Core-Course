@@ -131,3 +131,20 @@ production:
           - pause: 
               duration: 10s
           - setWeight: 100
+
+statefulset:
+  enabled: false
+  replicaCount: 3
+  revisionHistoryLimit: 10
+  podManagementPolicy: OrderedReady
+  terminationGracePeriodSeconds: 30
+  podAnnotations: {}
+  
+  persistence:
+    enabled: true
+    size: 1Gi
+    storageClass: ""
+    accessModes:
+      - ReadWriteOnce
+    mountPath: /data
+    annotations: {}

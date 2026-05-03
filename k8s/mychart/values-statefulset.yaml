@@ -1,0 +1,71 @@
+replicaCount: 3
+
+image:
+  repository: nginx
+  tag: stable
+  pullPolicy: IfNotPresent
+
+statefulset:
+  enabled: true
+  replicaCount: 3
+  revisionHistoryLimit: 10
+  podManagementPolicy: OrderedReady
+  terminationGracePeriodSeconds: 30
+  
+  persistence:
+    enabled: true
+    size: 1Gi
+    storageClass: standard
+    accessModes:
+      - ReadWriteOnce
+    mountPath: /data
+    annotations:
+      backup.kubernetes.io/enabled: "true"
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 80
+
+livenessProbe:
+  enabled: true
+  httpGet:
+    path: /
+    port: 80
+  initialDelaySeconds: 10
+  periodSeconds: 5
+
+readinessProbe:
+  enabled: true
+  httpGet:
+    path: /
+    port: 80
+  initialDelaySeconds: 5
+  periodSeconds: 5
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 250m
+    memory: 256Mi
+
+configMap:
+  enabled: false
+
+persistence:
+  enabled: false
+
+secrets:
+  enabled: false
+
+env:
+  - name: POD_NAME
+    valueFrom:
+      fieldRef:
+        fieldPath: metadata.name
+  - name: POD_ORDINAL
+    valueFrom:
+      fieldRef:
+        fieldPath: metadata.annotations['statefulset.kubernetes.io/pod-name']
