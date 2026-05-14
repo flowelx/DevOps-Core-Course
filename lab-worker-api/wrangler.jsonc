@@ -1,0 +1,23 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "lab-worker-api",
+	"main": "src/index.ts",
+	"compatibility_date": "2026-05-14",
+	"observability": {
+		"enabled": true
+	},
+	"upload_source_maps": true,
+	"compatibility_flags": [
+		"nodejs_compat"
+	],
+	"vars": {
+		"ENVIRONMENT": "production",
+		"DEFAULT_MESSAGE": "Hello from config"
+	},
+	"kv_namespaces": [
+		{
+			"binding": "LAB_KV",
+			"id": "df9fc9f2d2ee413292afb537e1aba475"
+		}
+	]
+}
